@@ -1,21 +1,23 @@
 package wecombot
 
+import "github.com/opentoys/wecombot/types"
+
 // ---- Welcome Message (respond to enter_chat event) ----
 
 // RespondWelcome sends a welcome text message.
 // Must be called within 5 seconds of receiving the enter_chat event.
 func (c *Client) RespondWelcome(reqID, content string) error {
-	return c.sendRequest(CmdRespondWelcome, reqID, &WelcomeMsgBody{
-		MsgType: MsgTypeText,
-		Text:    &TextContent{Content: content},
+	return c.sendRequest(types.CmdRespondWelcome, reqID, &types.WelcomeMsgBody{
+		MsgType: types.MsgTypeText,
+		Text:    &types.TextContent{Content: content},
 	})
 }
 
 // RespondWelcomeMarkdown sends a welcome markdown message.
 func (c *Client) RespondWelcomeMarkdown(reqID, content string) error {
-	return c.sendRequest(CmdRespondWelcome, reqID, &WelcomeMsgBody{
-		MsgType:  MsgTypeMarkdown,
-		Markdown: &MarkdownContent{Content: content},
+	return c.sendRequest(types.CmdRespondWelcome, reqID, &types.WelcomeMsgBody{
+		MsgType:  types.MsgTypeMarkdown,
+		Markdown: &types.MarkdownContent{Content: content},
 	})
 }
 
@@ -23,17 +25,17 @@ func (c *Client) RespondWelcomeMarkdown(reqID, content string) error {
 
 // RespondText replies with a text message to the given callback req_id.
 func (c *Client) RespondText(reqID, content string) error {
-	return c.sendRequest(CmdRespondMsg, reqID, &RespondMsgBody{
-		MsgType: MsgTypeText,
-		Text:    &TextContent{Content: content},
+	return c.sendRequest(types.CmdRespondMsg, reqID, &types.RespondMsgBody{
+		MsgType: types.MsgTypeText,
+		Text:    &types.TextContent{Content: content},
 	})
 }
 
 // RespondMarkdown replies with a markdown message.
 func (c *Client) RespondMarkdown(reqID, content string) error {
-	return c.sendRequest(CmdRespondMsg, reqID, &RespondMsgBody{
-		MsgType:  MsgTypeMarkdown,
-		Markdown: &MarkdownContent{Content: content},
+	return c.sendRequest(types.CmdRespondMsg, reqID, &types.RespondMsgBody{
+		MsgType:  types.MsgTypeMarkdown,
+		Markdown: &types.MarkdownContent{Content: content},
 	})
 }
 
@@ -66,9 +68,9 @@ func (c *Client) StreamFinish(reqID, streamID, finalContent string) error {
 }
 
 func (c *Client) streamSend(reqID, streamID string, finish bool, content string) error {
-	return c.sendRequest(CmdRespondMsg, reqID, &RespondMsgBody{
-		MsgType: MsgTypeStream,
-		Stream: &StreamContent{
+	return c.sendRequest(types.CmdRespondMsg, reqID, &types.RespondMsgBody{
+		MsgType: types.MsgTypeStream,
+		Stream: &types.StreamContent{
 			ID:      streamID,
 			Finish:  finish,
 			Content: content,
@@ -77,42 +79,42 @@ func (c *Client) streamSend(reqID, streamID string, finish bool, content string)
 }
 
 // RespondTemplateCard replies with a template card message.
-func (c *Client) RespondTemplateCard(reqID string, card *TemplateCard) error {
-	return c.sendRequest(CmdRespondMsg, reqID, &RespondMsgBody{
-		MsgType:      MsgTypeTemplateCard,
+func (c *Client) RespondTemplateCard(reqID string, card *types.TemplateCard) error {
+	return c.sendRequest(types.CmdRespondMsg, reqID, &types.RespondMsgBody{
+		MsgType:      types.MsgTypeTemplateCard,
 		TemplateCard: card,
 	})
 }
 
 // RespondFile replies with a file message using media_id.
 func (c *Client) RespondFile(reqID, mediaID string) error {
-	return c.sendRequest(CmdRespondMsg, reqID, &RespondMsgBody{
-		MsgType: MsgTypeFile,
-		File:    &FileMedia{MediaID: mediaID},
+	return c.sendRequest(types.CmdRespondMsg, reqID, &types.RespondMsgBody{
+		MsgType: types.MsgTypeFile,
+		File:    &types.FileMedia{MediaID: mediaID},
 	})
 }
 
 // RespondImage replies with an image using media_id.
 func (c *Client) RespondImage(reqID, mediaID string) error {
-	return c.sendRequest(CmdRespondMsg, reqID, &RespondMsgBody{
-		MsgType: MsgTypeImage,
-		Image:   &ImageMedia{MediaID: mediaID},
+	return c.sendRequest(types.CmdRespondMsg, reqID, &types.RespondMsgBody{
+		MsgType: types.MsgTypeImage,
+		Image:   &types.ImageMedia{MediaID: mediaID},
 	})
 }
 
 // RespondVoice replies with a voice message using media_id.
 func (c *Client) RespondVoice(reqID, mediaID string) error {
-	return c.sendRequest(CmdRespondMsg, reqID, &RespondMsgBody{
-		MsgType: MsgTypeVoice,
-		Voice:   &VoiceMedia{MediaID: mediaID},
+	return c.sendRequest(types.CmdRespondMsg, reqID, &types.RespondMsgBody{
+		MsgType: types.MsgTypeVoice,
+		Voice:   &types.VoiceMedia{MediaID: mediaID},
 	})
 }
 
 // RespondVideo replies with a video using media_id.
 func (c *Client) RespondVideo(reqID, mediaID string) error {
-	return c.sendRequest(CmdRespondMsg, reqID, &RespondMsgBody{
-		MsgType: MsgTypeVideo,
-		Video:   &VideoMedia{MediaID: mediaID},
+	return c.sendRequest(types.CmdRespondMsg, reqID, &types.RespondMsgBody{
+		MsgType: types.MsgTypeVideo,
+		Video:   &types.VideoMedia{MediaID: mediaID},
 	})
 }
 
@@ -120,8 +122,8 @@ func (c *Client) RespondVideo(reqID, mediaID string) error {
 // Must be called within 5 seconds of receiving the event.
 
 // UpdateTemplateCard updates a template card after user clicks its button.
-func (c *Client) UpdateTemplateCard(reqID string, card *TemplateCard) error {
-	return c.sendRequest(CmdRespondUpdateMsg, reqID, &UpdateCardBody{
+func (c *Client) UpdateTemplateCard(reqID string, card *types.TemplateCard) error {
+	return c.sendRequest(types.CmdRespondUpdateMsg, reqID, &types.UpdateCardBody{
 		ResponseType: "update_template_card",
 		TemplateCard: card,
 	})
@@ -133,32 +135,32 @@ func (c *Client) UpdateTemplateCard(reqID string, card *TemplateCard) error {
 // SendText actively pushes a text message to a single chat or group.
 func (c *Client) SendText(chatID string, chatType uint32, content string) error {
 	reqID := genReqID()
-	return c.sendRequest(CmdSendMsg, reqID, &SendMsgBody{
+	return c.sendRequest(types.CmdSendMsg, reqID, &types.SendMsgBody{
 		ChatID:   chatID,
 		ChatType: chatType,
-		MsgType:  MsgTypeText,
-		Markdown: &MarkdownContent{Content: content}, // use markdown content field
+		MsgType:  types.MsgTypeText,
+		Markdown: &types.MarkdownContent{Content: content}, // use markdown content field
 	})
 }
 
 // SendMarkdown actively pushes a markdown-formatted message.
 func (c *Client) SendMarkdown(chatID string, chatType uint32, content string) error {
 	reqID := genReqID()
-	return c.sendRequest(CmdSendMsg, reqID, &SendMsgBody{
+	return c.sendRequest(types.CmdSendMsg, reqID, &types.SendMsgBody{
 		ChatID:   chatID,
 		ChatType: chatType,
-		MsgType:  MsgTypeMarkdown,
-		Markdown: &MarkdownContent{Content: content},
+		MsgType:  types.MsgTypeMarkdown,
+		Markdown: &types.MarkdownContent{Content: content},
 	})
 }
 
 // SendTemplateCard actively pushes a template card message.
-func (c *Client) SendTemplateCard(chatID string, chatType uint32, card *TemplateCard) error {
+func (c *Client) SendTemplateCard(chatID string, chatType uint32, card *types.TemplateCard) error {
 	reqID := genReqID()
-	return c.sendRequest(CmdSendMsg, reqID, &SendMsgBody{
+	return c.sendRequest(types.CmdSendMsg, reqID, &types.SendMsgBody{
 		ChatID:       chatID,
 		ChatType:     chatType,
-		MsgType:      MsgTypeTemplateCard,
+		MsgType:      types.MsgTypeTemplateCard,
 		TemplateCard: card,
 	})
 }

@@ -8,17 +8,19 @@ import (
 	"os/signal"
 	"syscall"
 
-	wecom "github.com/opentoys/wecombot"
+	"github.com/opentoys/wecombot"
+	"github.com/opentoys/wecombot/types"
+	"github.com/opentoys/wecombot/websocket"
 )
 
 func main() {
-	cfg := wecom.DefaultConfig(
+	cfg := wecombot.DefaultConfig(
 		os.Getenv("WECOM_BOT_ID"),
 		os.Getenv("WECOM_BOT_SECRET"),
 	)
 	cfg.Debug = true
 
-	client, err := wecom.New(cfg)
+	client, err := wecombot.New(cfg, websocket.DefaultDialer)
 	if err != nil {
 		log.Fatalf("create client: %v", err)
 	}
@@ -36,31 +38,31 @@ func main() {
 		log.Printf("[bot] reconnecting... attempt %d", attempt)
 	})
 
-	client.OnEvent(func(reqID string, event *wecom.EventCallbackBody) {
+	client.OnEvent(func(reqID string, event *types.EventCallbackBody) {
 		switch event.Event.EventType {
-		case wecom.EventEnterChat:
+		case types.EventEnterChat:
 			log.Printf("[bot] user %s entered chat", event.From.UserID)
 			err := client.RespondWelcome(reqID, "您好！我是智能助手，有什么可以帮您的？")
 			if err != nil {
 				log.Printf("[bot] respond welcome error: %v", err)
 			}
 
-		case wecom.EventTemplateCard:
+		case types.EventTemplateCard:
 			log.Printf("[bot] template card event: task=%s response=%+v",
 				event.Event.TaskID, event.Event.Response)
 
-		case wecom.EventFeedback:
+		case types.EventFeedback:
 			log.Printf("[bot] feedback from %s: content=%s",
 				event.Event.FeedbackUser, event.Event.FeedbackContent)
 		}
 	})
 
-	client.OnMessage(func(reqID string, msg *wecom.MsgCallbackBody) {
+	client.OnMessage(func(reqID string, msg *types.MsgCallbackBody) {
 		log.Printf("[bot] message from %s in %s: type=%s",
 			msg.From.UserID, msg.ChatType, msg.MsgType)
 
 		switch msg.MsgType {
-		case wecom.MsgTypeText:
+		case types.MsgTypeText:
 			content := msg.Text.Content
 			log.Printf("[bot] text: %s", content)
 
@@ -93,6 +95,7 @@ func main() {
 		<-sigCh
 		log.Println("[bot] shutting down...")
 		cancel()
+		os.Exit(0)
 	}()
 
 	log.Println("[bot] connecting...")

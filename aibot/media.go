@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+
+	"github.com/opentoys/wecombot/types"
 )
 
 // MediaUploader provides temporary media upload via the long connection.
@@ -21,8 +23,8 @@ import (
 //   - Upload session validity: 30 minutes
 //   - Media file validity after upload: 3 days
 const (
-	maxChunkSize    = 512 * 1024 // 512KB before base64
-	maxTotalChunks  = 100
+	maxChunkSize     = 512 * 1024 // 512KB before base64
+	maxTotalChunks   = 100
 	defaultChunkSize = 500 * 1024 // leave some margin for base64 overhead
 )
 
@@ -87,7 +89,7 @@ func (c *Client) UploadFromReader(mediaType MediaType, filename string, totalSiz
 	}
 
 	// Step 1: Initialize
-	uploadID, err := c.uploadInit(&UploadInitBody{
+	uploadID, err := c.uploadInit(&types.UploadInitBody{
 		Type:        string(mediaType),
 		Filename:    filename,
 		TotalSize:   totalSize,
@@ -120,13 +122,13 @@ func (c *Client) UploadFromReader(mediaType MediaType, filename string, totalSiz
 // ---- Low-level upload methods ----
 
 // uploadInit sends the init request and returns the upload_id.
-func (c *Client) uploadInit(body *UploadInitBody) (string, error) {
+func (c *Client) uploadInit(body *types.UploadInitBody) (string, error) {
 	reqID := genReqID()
-	if err := c.sendRequest(CmdUploadMediaInit, reqID, body); err != nil {
+	if err := c.sendRequest(types.CmdUploadMediaInit, reqID, body); err != nil {
 		return "", err
 	}
 
-	var resp UploadInitResponse
+	var resp types.UploadInitResponse
 	if err := c.readJSON(&resp); err != nil {
 		return "", err
 	}
@@ -140,7 +142,7 @@ func (c *Client) uploadInit(body *UploadInitBody) (string, error) {
 func (u *MediaUpload) UploadChunk(index int, data []byte) error {
 	encoded := base64.StdEncoding.EncodeToString(data)
 	reqID := genReqID()
-	return u.client.sendRequest(CmdUploadMediaChunk, reqID, &UploadChunkBody{
+	return u.client.sendRequest(types.CmdUploadMediaChunk, reqID, &types.UploadChunkBody{
 		UploadID:   u.uploadID,
 		ChunkIndex: index,
 		Base64Data: encoded,
@@ -150,13 +152,13 @@ func (u *MediaUpload) UploadChunk(index int, data []byte) error {
 // Finish completes the chunked upload and returns the media_id.
 func (u *MediaUpload) Finish() (*UploadResult, error) {
 	reqID := genReqID()
-	if err := u.client.sendRequest(CmdUploadMediaFinish, reqID, &UploadFinishBody{
+	if err := u.client.sendRequest(types.CmdUploadMediaFinish, reqID, &types.UploadFinishBody{
 		UploadID: u.uploadID,
 	}); err != nil {
 		return nil, err
 	}
 
-	var resp UploadFinishResponse
+	var resp types.UploadFinishResponse
 	if err := u.client.readJSON(&resp); err != nil {
 		return nil, err
 	}

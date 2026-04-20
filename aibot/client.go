@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gorilla/websocket"
+	"github.com/opentoys/wecombot/types"
 )
 
 var (
@@ -22,32 +22,42 @@ var (
 	ErrClosed = errors.New("wecombot: client closed")
 )
 
+// DefaultConfig returns a Config with sensible defaults.
+func DefaultConfig(botID, secret string) *types.Config {
+	return &types.Config{
+		BotID:                botID,
+		Secret:               secret,
+		WSSURL:               types.DefaultWSSURL,
+		HeartbeatInterval:    30 * time.Second,
+		ReconnectMaxAttempts: 0, // infinite
+		ReconnectWait:        3 * time.Second,
+	}
+}
+
 // Client is the WeCom AI Bot WebSocket long-connection client.
 type Client struct {
-	cfg *Config
-
-	conn     *websocket.Conn
+	cfg      *types.Config
+	conn     types.Conn
 	connMu   sync.RWMutex
-
+	dialer   types.Dialer
 	handlers struct {
-		OnMessage      OnMessageFunc
-		OnEvent        OnEventFunc
-		OnConnected    OnConnectedFunc
-		OnDisconnected OnDisconnectedFunc
-		OnReconnecting OnReconnectingFunc
+		OnMessage      types.OnMessageFunc
+		OnEvent        types.OnEventFunc
+		OnConnected    types.OnConnectedFunc
+		OnDisconnected types.OnDisconnectedFunc
+		OnReconnecting types.OnReconnectingFunc
 	}
-
 	ctx       context.Context
 	cancel    context.CancelFunc
 	closeOnce sync.Once
-
-	wg sync.WaitGroup
+	wg        sync.WaitGroup
 }
 
-// New creates a new WeCom Bot client with the given configuration.
-func New(cfg *Config) (*Client, error) {
+// New creates a new WeCom Bot client with a custom WebSocket dialer.
+// Use this to swap in alternative WebSocket implementations.
+func New(cfg *types.Config, dialer types.Dialer) (*Client, error) {
 	if cfg.WSSURL == "" {
-		cfg.WSSURL = DefaultWSSURL
+		cfg.WSSURL = types.DefaultWSSURL
 	}
 	if cfg.HeartbeatInterval == 0 {
 		cfg.HeartbeatInterval = 30 * time.Second
@@ -55,25 +65,25 @@ func New(cfg *Config) (*Client, error) {
 	if cfg.ReconnectWait == 0 {
 		cfg.ReconnectWait = 3 * time.Second
 	}
-	return &Client{cfg: cfg}, nil
+	return &Client{cfg: cfg, dialer: dialer}, nil
 }
 
 // ---- Handler Registration ----
 
 // OnMessage registers a handler for user message callbacks.
-func (c *Client) OnMessage(fn OnMessageFunc) { c.handlers.OnMessage = fn }
+func (c *Client) OnMessage(fn types.OnMessageFunc) { c.handlers.OnMessage = fn }
 
 // OnEvent registers a handler for event callbacks.
-func (c *Client) OnEvent(fn OnEventFunc) { c.handlers.OnEvent = fn }
+func (c *Client) OnEvent(fn types.OnEventFunc) { c.handlers.OnEvent = fn }
 
 // OnConnected registers a callback invoked after successful subscription.
-func (c *Client) OnConnected(fn OnConnectedFunc) { c.handlers.OnConnected = fn }
+func (c *Client) OnConnected(fn types.OnConnectedFunc) { c.handlers.OnConnected = fn }
 
 // OnDisconnected registers a callback when connection is lost or kicked.
-func (c *Client) OnDisconnected(fn OnDisconnectedFunc) { c.handlers.OnDisconnected = fn }
+func (c *Client) OnDisconnected(fn types.OnDisconnectedFunc) { c.handlers.OnDisconnected = fn }
 
 // OnReconnecting registers a callback before each reconnect attempt.
-func (c *Client) OnReconnecting(fn OnReconnectingFunc) { c.handlers.OnReconnecting = fn }
+func (c *Client) OnReconnecting(fn types.OnReconnectingFunc) { c.handlers.OnReconnecting = fn }
 
 // ---- Connection Lifecycle ----
 
@@ -126,7 +136,7 @@ func (c *Client) Connect(ctx context.Context) error {
 // or if we were closed. Returns an error for transient failures that should trigger reconnect.
 func (c *Client) connectOnce() error {
 	// Dial WebSocket
-	conn, _, err := websocket.DefaultDialer.Dial(c.cfg.WSSURL, nil)
+	conn, err := c.dialer.Dial(c.cfg.WSSURL, nil)
 	if err != nil {
 		return fmt.Errorf("wecombot: dial error: %w", err)
 	}
@@ -141,7 +151,7 @@ func (c *Client) connectOnce() error {
 
 	// Send subscribe request
 	subReqID := genReqID()
-	if err := c.sendRequest(CmdSubscribe, subReqID, &SubscribeBody{
+	if err := c.sendRequest(types.CmdSubscribe, subReqID, &types.SubscribeBody{
 		BotID:  c.cfg.BotID,
 		Secret: c.cfg.Secret,
 	}); err != nil {
@@ -149,7 +159,7 @@ func (c *Client) connectOnce() error {
 	}
 
 	// Read subscribe response
-	var subResp Response
+	var subResp types.Response
 	if err := c.readJSON(&subResp); err != nil {
 		return fmt.Errorf("wecombot: subscribe response read failed: %w", err)
 	}
@@ -187,13 +197,13 @@ func (c *Client) connectOnce() error {
 		}
 
 		switch cmd {
-		case CmdPing:
+		case types.CmdPing:
 			// Server may send ping; respond with pong-like behavior
 			if c.cfg.Debug {
 				log.Printf("[wecombot] received ping from server")
 			}
 
-		case CmdMsgCallback:
+		case types.CmdMsgCallback:
 			msg := &CallbackEnvelope{}
 			if err := json.Unmarshal(raw, msg); err == nil {
 				if c.handlers.OnMessage != nil {
@@ -201,11 +211,11 @@ func (c *Client) connectOnce() error {
 				}
 			}
 
-		case CmdEventCallback:
+		case types.CmdEventCallback:
 			ev := &EventEnvelope{}
 			if err := json.Unmarshal(raw, ev); err == nil {
 				// Disconnected event means we were kicked — return to allow reconnect
-				if ev.Body.Event.EventType == EventDisconnected {
+				if ev.Body.Event.EventType == types.EventDisconnected {
 					close(stopHB)
 					if c.cfg.Debug {
 						log.Printf("[wecombot] received disconnected_event (kicked by new connection)")
@@ -263,9 +273,9 @@ func (c *Client) sendRequest(cmd, reqID string, body interface{}) error {
 		return ErrNotConnected
 	}
 
-	req := Request{
+	req := types.Request{
 		Cmd:    cmd,
-		Header: Header{ReqID: reqID},
+		Header: types.Header{ReqID: reqID},
 		Body:   body,
 	}
 	return conn.WriteJSON(req)
@@ -282,7 +292,7 @@ func (c *Client) readJSON(v interface{}) error {
 	return conn.ReadJSON(v)
 }
 
-func (c *Client) heartbeatLoop(conn *websocket.Conn, stop <-chan struct{}) {
+func (c *Client) heartbeatLoop(conn types.Conn, stop <-chan struct{}) {
 	ticker := time.NewTicker(c.cfg.HeartbeatInterval)
 	defer ticker.Stop()
 
@@ -290,7 +300,7 @@ func (c *Client) heartbeatLoop(conn *websocket.Conn, stop <-chan struct{}) {
 		select {
 		case <-ticker.C:
 			reqID := genReqID()
-			msg := Request{Cmd: CmdPing, Header: Header{ReqID: reqID}}
+			msg := types.Request{Cmd: types.CmdPing, Header: types.Header{ReqID: reqID}}
 			c.connMu.RLock()
 			currentConn := c.conn
 			c.connMu.RUnlock()
@@ -322,14 +332,14 @@ func (c *Client) heartbeatLoop(conn *websocket.Conn, stop <-chan struct{}) {
 
 // CallbackEnvelope wraps a message callback with its header.
 type CallbackEnvelope struct {
-	Header Header          `json:"headers"`
-	Body   MsgCallbackBody `json:"body"`
+	Header types.Header          `json:"headers"`
+	Body   types.MsgCallbackBody `json:"body"`
 }
 
 // EventEnvelope wraps an event callback with its header.
 type EventEnvelope struct {
-	Header Header           `json:"headers"`
-	Body   EventCallbackBody `json:"body"`
+	Header types.Header            `json:"headers"`
+	Body   types.EventCallbackBody `json:"body"`
 }
 
 // extractCmd extracts the "cmd" field from raw JSON without full unmarshal.
