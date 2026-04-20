@@ -1,4 +1,4 @@
-package wecombot
+package aibot
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/opentoys/wecombot/types"
+	"github.com/opentoys/wecombot/aibot/types"
 )
 
 var (

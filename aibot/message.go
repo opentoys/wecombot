@@ -1,6 +1,6 @@
-package wecombot
+package aibot
 
-import "github.com/opentoys/wecombot/types"
+import "github.com/opentoys/wecombot/aibot/types"
 
 // ---- Welcome Message (respond to enter_chat event) ----
 

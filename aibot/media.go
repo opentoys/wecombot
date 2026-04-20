@@ -1,4 +1,4 @@
-package wecombot
+package aibot
 
 import (
 	"crypto/md5"
@@ -7,7 +7,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/opentoys/wecombot/types"
+	"github.com/opentoys/wecombot/aibot/types"
 )
 
 // MediaUploader provides temporary media upload via the long connection.

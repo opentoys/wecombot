@@ -8,4 +8,4 @@
 //   - Active message push
 //   - Heartbeat keep-alive
 //   - Temporary media upload (chunked upload)
-package wecombot
+package aibot

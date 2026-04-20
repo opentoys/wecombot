@@ -8,19 +8,19 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/opentoys/wecombot"
-	"github.com/opentoys/wecombot/types"
-	"github.com/opentoys/wecombot/websocket"
+	"github.com/opentoys/wecombot/aibot"
+	"github.com/opentoys/wecombot/aibot/types"
+	"github.com/opentoys/wecombot/aibot/websocket"
 )
 
 func main() {
-	cfg := wecombot.DefaultConfig(
+	cfg := aibot.DefaultConfig(
 		os.Getenv("WECOM_BOT_ID"),
 		os.Getenv("WECOM_BOT_SECRET"),
 	)
 	cfg.Debug = true
 
-	client, err := wecombot.New(cfg, websocket.DefaultDialer)
+	client, err := aibot.New(cfg, websocket.DefaultDialer)
 	if err != nil {
 		log.Fatalf("create client: %v", err)
 	}

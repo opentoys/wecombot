@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/opentoys/wecombot/types"
+	"github.com/opentoys/wecombot/aibot/types"
 )
 
 // ---- gorilla implementation ----
