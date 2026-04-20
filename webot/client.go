@@ -37,8 +37,9 @@ type Bot struct {
 	httpClient *http.Client
 
 	// rate limiter (optional, enabled via WithRateLimit)
-	rateMu sync.Mutex
+	rateMu *sync.Mutex
 	rateCh chan struct{}
+	ctx    context.Context
 }
 
 // New creates a Bot with the given webhook key.
@@ -57,6 +58,8 @@ func NewWithClient(key string, hc *http.Client) *Bot {
 		webhookURL: fmt.Sprintf("%s?key=%s", DefaultBaseURL, key),
 		uploadURL:  fmt.Sprintf("%s?key=%s", DefaultUploadURL, key),
 		httpClient: hc,
+		rateMu:     &sync.Mutex{},
+		ctx:        context.Background(),
 	}
 }
 
@@ -66,6 +69,8 @@ func NewWithClientURL(webhookURL string, hc *http.Client) *Bot {
 		webhookURL: webhookURL,
 		uploadURL:  toUploadURL(webhookURL),
 		httpClient: hc,
+		rateMu:     &sync.Mutex{},
+		ctx:        context.Background(),
 	}
 }
 
@@ -75,6 +80,17 @@ func (b *Bot) WithRateLimit() *Bot {
 	b.rateCh = make(chan struct{}, MaxMessagesPerMin)
 	go b.refillLoop()
 	return b
+}
+
+func (b *Bot) WithContext(ctx context.Context) *Bot {
+	return &Bot{
+		webhookURL: b.webhookURL,
+		uploadURL:  b.uploadURL,
+		httpClient: b.httpClient,
+		rateMu:     b.rateMu,
+		rateCh:     b.rateCh,
+		ctx:        ctx,
+	}
 }
 
 // ---- Text ----
@@ -225,7 +241,7 @@ func (b *Bot) UploadMedia(r io.Reader, filename, mediaType string) (*UploadMedia
 	w.Close()
 
 	url := fmt.Sprintf("%s&type=%s", b.uploadURL, mediaType)
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, url, &buf)
+	req, err := http.NewRequestWithContext(b.ctx, http.MethodPost, url, &buf)
 	if err != nil {
 		return nil, fmt.Errorf("webot: create request: %w", err)
 	}
